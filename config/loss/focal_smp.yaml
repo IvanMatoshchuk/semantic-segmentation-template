@@ -1,0 +1,5 @@
+_target_: segmentation_models_pytorch.losses.FocalLoss
+
+mode: multiclass
+alpha: null
+gamma: 4.0

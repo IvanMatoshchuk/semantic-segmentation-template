@@ -1,0 +1,13 @@
+_target_: src.model.segmentation_model.HoneyBeeModel
+_recursive_: False
+
+model_cfg:
+  _target_: segmentation_models_pytorch.MAnet
+
+  encoder_name: resnet18 # timm-mobilenetv3_small_100
+  encoder_weights: imagenet
+  encoder_depth: 5
+  classes: 9
+  in_channels: 1
+  #activation: softmax
+  # decoder_channels: [64, 32, 16] #  depth 3

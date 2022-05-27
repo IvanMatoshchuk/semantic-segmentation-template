@@ -1,0 +1,5 @@
+data_folder: "inference_data/images"
+output_fodler: "inference_data/predictions"
+
+saved_model: "version_4"
+crop_size: 512

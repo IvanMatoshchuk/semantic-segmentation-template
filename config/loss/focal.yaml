@@ -1,0 +1,11 @@
+# _target_: src.losses.losses.FocalLoss
+
+# alpha:  [1.8630939,   3.36181348,   7.57652905, 483.19532392, 73.18332719, 136.72072403, 0, 260.26498754, 144.44498374]
+# gamma: 2
+# _convert_: partial
+
+_target_: segmentation_models_pytorch.losses.FocalLoss
+
+mode: multiclass
+alpha: null
+gamma: 2.0

@@ -1,0 +1,16 @@
+_target_: src.losses.losses.DiceCEGausWeighted
+
+dice_loss:
+  _target_: segmentation_models_pytorch.losses.DiceLoss
+
+  mode: multiclass
+  classes: [0, 1, 2, 3, 4, 5, 6, 7, 8]
+  from_logits: True
+
+class_weights_ce:  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+
+kernel_size: 224
+
+ce_weight: 0.6
+dice_weight: 0.4
+

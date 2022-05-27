@@ -1,0 +1,27 @@
+_target_: src.losses.losses.DiceWithCE
+
+dice_loss:
+  _target_: segmentation_models_pytorch.losses.DiceLoss
+
+  mode: multiclass
+  classes: [0, 1, 2, 3, 4, 5, 6, 7, 8]
+  from_logits: True
+
+# class_weights: [0.20796975,
+#     0.3837159,
+#     0.88069151,
+#     20.57234057,
+#     6.8070615,
+#     5.55096667,
+#     10.0255543,
+#     18.97755402,
+#     14.5260916,
+# ]
+#class_weights:  [0.5, 0.5, 0.6, 4, 2, 2, 2, 4, 1.0]
+class_weights:  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+dice_weight: 0.5
+ce_weight: 0.5
+# class_weights:  [0.4, 0.8, 5.0, 2.0, 2.0, 2.0, 3.0, 4.0, 2.0]
+
+# ce_loss:
+#   _target_: torch.nn.CrossEntropyLoss

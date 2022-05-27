@@ -1,0 +1,14 @@
+_target_: src.losses.losses.FocalWithCE
+
+focal_loss:
+  _target_: segmentation_models_pytorch.losses.FocalLoss
+ 
+  mode: multiclass
+  alpha: null
+  gamma: 2.0
+
+
+
+class_weights:  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+focal_weight: 0.35
+ce_weight: 0.65

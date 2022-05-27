@@ -1,0 +1,10 @@
+_target_: src.model.segmentation_model.HoneyBeeModel
+_recursive_: False
+
+model_cfg:
+  _target_: torchvision.models.segmentation.lraspp_mobilenet_v3_large
+  
+  num_classes: 9
+  pretrained: False
+  pretrained_backbone: False
+  progress: True

@@ -1,0 +1,32 @@
+defaults:
+  - _self_
+  - logger: wandb
+  - callbacks: wandb
+  - datamodule: batch_datamodule
+  - model: unet
+  - trainer: default_trainer
+  - optimizer: adam
+  - scheduler: cosinewarm
+  - loss: dice_with_ce
+
+  # enable color logging
+  - override hydra/hydra_logging: colorlog
+  - override hydra/job_logging: colorlog
+
+general:
+  name: unet-effnetb0-batch16x224px-6images-0.5DICE-0.5CE  # name of the run, accessed by loggers
+  seed: 123
+  work_dir: ${hydra:runtime.cwd}
+
+# print config at the start
+print_config: True
+
+# disable python warnings if they annoy you
+ignore_warnings: False
+
+# check performance on test set, using the best model achieved during training
+# lightning chooses best model based on metric specified in checkpoint callback
+test_after_training: False
+
+# for k-fold cross validation (used with train_cross_val.py)
+n_folds: 6

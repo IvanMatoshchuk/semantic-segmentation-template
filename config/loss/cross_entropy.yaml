@@ -1,0 +1,5 @@
+_target_: torch.nn.CrossEntropyLoss
+
+# provide "weight" argument in script
+# weights: [1,2,3,4,5]
+# _convert_: partial
