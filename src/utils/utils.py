@@ -8,7 +8,7 @@ from typing import List, Any, Sequence
 from omegaconf import DictConfig, OmegaConf
 
 from pytorch_lightning.utilities import rank_zero_only
-from pytorch_lightning import Callback, LightningModule, Trainer, Callback, loggers
+from pytorch_lightning import Callback, LightningModule, Trainer, loggers
 
 
 def get_logger(name=__name__) -> logging.Logger:
