@@ -1,4 +1,0 @@
-_target_: src.losses.losses.WassersteinDice
-
-weighting_mode: 'GDL'
-reduction: 'mean'

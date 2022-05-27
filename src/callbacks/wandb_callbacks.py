@@ -1,17 +1,22 @@
+import os
 import subprocess
 from pathlib import Path
-from typing import List, Tuple
-import pandas as pd
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns
 import torch
 import wandb
+from monai.inferers import SlidingWindowInferer
 from pytorch_lightning import Callback, Trainer
 from pytorch_lightning.loggers import LoggerCollection, WandbLogger
 from pytorch_lightning.utilities import rank_zero_only
 from sklearn import metrics
-from monai.inferers import SlidingWindowInferer
+from src.utils.utils import read_label_classes_config
+
+project_path = Path(__file__).parent.parent.parent
+path_to_label_classes = os.path.join(project_path, "data", "label_classes.json")
 
 
 def get_wandb_logger(trainer: Trainer) -> WandbLogger:
@@ -47,7 +52,8 @@ class UploadCodeAsArtifact(Callback):
     def __init__(self, code_dir: str, use_git: bool = True):
         """
 
-        Args:
+        Parameters
+        ----------
             code_dir: the code directory
             use_git: if using git, then upload all files that are not ignored by git.
             if not using git, then upload all '*.py' file
@@ -114,8 +120,14 @@ class UploadCheckpointsAsArtifact(Callback):
 
 
 class LogConfusionMatrix(Callback):
-    """Generate confusion matrix every epoch and send it to wandb.
-    Expects validation step to return predictions and targets.
+    """
+    Generate confusion matrix and send it to wandb.
+    Apply sliding window inference on the validation image to get the inferred mask.
+
+    Parameters
+    ----------
+        log_freq: int
+            Frequency of logging
     """
 
     def __init__(self, log_freq: int):
@@ -135,52 +147,49 @@ class LogConfusionMatrix(Callback):
         """Start executing this callback only after all validation sanity checks end."""
         self.ready = True
 
-    # def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
-    #     """Gather data from single batch."""
-    #     if self.ready:
-    #         self.preds.append(outputs["preds"])
-    #         self.targets.append(outputs["targets"])
-
     @rank_zero_only
     def on_validation_epoch_end(self, trainer, pl_module):
-        """Generate confusion matrix."""
+        """
+        Use validation dataloader to get the batch.
+        Apply sliding window inference.
+        Generate confusion matrix.
+
+        Parameters
+        ----------
+            log_freq: int
+                Frequency of logging
+        """
         if self.ready & (trainer.current_epoch % self.log_freq == 0):
             logger = get_wandb_logger(trainer)
             experiment = logger.experiment
 
             # get a validation batch from the validation dat loader
             val_samples = next(iter(trainer.datamodule.val_dataloader()))
-            val_imgs, val_targets = val_samples
+            val_imgs, val_labels = val_samples
+
+            # Currently uploading only the first image in batch!
+            val_imgs = val_imgs[0, ...].unsqueeze(0)
+            val_labels = val_labels[0, ...].unsqueeze(0)
 
             # run the batch through the network
             val_imgs = val_imgs.to(device=pl_module.device)
-
-            logits = self.infer(val_imgs, pl_module)
+            with torch.no_grad():
+                logits = self.infer(val_imgs, pl_module)
+            print("\nlogits:", logits.size())
             preds = torch.argmax(logits, dim=1).detach().cpu().numpy()
 
-            val_targets = val_targets.squeeze().cpu().numpy()
+            val_labels = val_labels.squeeze().cpu().numpy()
 
-            # TODO: read from data folder
-            class_labels = {
-                0: "background",
-                1: "bees",
-                2: "empty_cell",
-                3: "open_brood",
-                4: "open_honey",
-                5: "capped_honey",
-                6: "capped_brood",
-                7: "pollen",
-                8: "bee_in_cell",
-            }
+            class_labels = read_label_classes_config(path_to_label_classes)
 
             confusion_matrix = metrics.confusion_matrix(
-                y_true=val_targets.flatten(), y_pred=preds.flatten(), labels=[k for k in class_labels.keys()]
+                y_true=val_labels.flatten(), y_pred=preds.flatten(), labels=[k for k in class_labels.values()]
             )
 
             ground_truth = confusion_matrix.sum(axis=1)
 
             cm_df = pd.DataFrame(
-                confusion_matrix, index=[k for k in class_labels.values()], columns=[k for k in class_labels.values()]
+                confusion_matrix, index=[k for k in class_labels.keys()], columns=[k for k in class_labels.keys()]
             )
             cm_df.index.name = "ground truth ➡"
 
@@ -211,9 +220,18 @@ class LogConfusionMatrix(Callback):
 
 
 class LogImagePredictions(Callback):
-    """Logs a validation batch and their predictions to wandb.
+    """
+    Logs a validation batch and their predictions to wandb.
     Example adapted from:
         https://wandb.ai/wandb/wandb-lightning/reports/Image-Classification-using-PyTorch-Lightning--VmlldzoyODk1NzY
+
+    Apply sliding window inference on the validation image to get the inferred mask.
+    Currently works on the first image in the batch!
+
+    Parameters
+    ----------
+        log_freq: int
+            Frequency of logging
     """
 
     def __init__(self, log_freq: int = 10):
@@ -234,8 +252,6 @@ class LogImagePredictions(Callback):
 
     @rank_zero_only
     def on_validation_epoch_end(self, trainer, pl_module):
-        # TODO: Currently works only on 1 image!
-        # TODO: is there a better way to specify log frequency?
 
         if self.ready & (trainer.current_epoch % self.log_freq == 0):
             logger = get_wandb_logger(trainer=trainer)
@@ -245,39 +261,19 @@ class LogImagePredictions(Callback):
             val_samples = next(iter(trainer.datamodule.val_dataloader()))
             val_imgs, val_labels = val_samples
 
+            # Currently uploading only the first image in batch!
+            val_imgs = val_imgs[0, ...].unsqueeze(0)
+            val_labels = val_labels[0, ...].unsqueeze(0)
+
             # run the batch through the network
             val_imgs = val_imgs.to(device=pl_module.device)
-
-            # val_imgs, val_labels = self.adjust_image_and_mask(val_imgs.squeeze(), val_labels.squeeze())
-
-            preds = self.infer(val_imgs, pl_module)
+            with torch.no_grad():
+                preds = self.infer(val_imgs, pl_module)
             preds = torch.argmax(preds.squeeze(), dim=0)
 
-            # val_imgs_blocks = self.create_blocks(val_imgs)
-            # preds = self.generate_prediction(val_imgs_blocks, val_imgs, pl_module)
-
-            # logits = torch.sigmoid(pl_module(val_imgs))
-            # # preds = torch.argmax(logits, dim=-1)
-            # preds = torch.argmax(logits.squeeze(), dim=0)
-
-            # print("GLOBAL STEP: ", trainer.global_step)
-            # print("Preds:", preds.size())
-            # print("Logits: ", logits.size())
-            # print("Val_imgs: ", val_imgs.size())
-            # print("val_labels:", val_labels.size())
-
             # TODO: read from data folder
-            class_labels = {
-                0: "background",
-                1: "bees",
-                2: "empty_cell",
-                3: "open_brood",
-                4: "open_honey",
-                5: "capped_honey",
-                6: "capped_brood",
-                7: "pollen",
-                8: "bee_in_cell",
-            }
+            label_classes = read_label_classes_config(path_to_label_classes)
+            class_labels = {v: k for k, v in label_classes.items()}
 
             # TODO: make for loop
             experiment.log(
@@ -297,57 +293,3 @@ class LogImagePredictions(Callback):
                     )
                 }
             )
-
-    def adjust_image_and_mask(
-        self, image: torch.tensor, mask: torch.tensor, block_size: int = 256
-    ) -> Tuple[torch.tensor, torch.tensor]:
-
-        image = image.squeeze()
-        height = image.size()[0] // block_size * block_size // 32 * 32
-        width = image.size()[1] // block_size * block_size // 32 * 32
-        image = image[:height, :width]
-        mask = mask[:height, :width]
-        image = image[:height, :width]
-
-        return image, mask
-
-    def create_blocks(self, image: torch.tensor, block_size: int = 256) -> List[torch.tensor]:
-
-        y_steps = int(image.shape[0] / block_size)
-        x_steps = int(image.shape[1] / block_size)
-
-        blocks = []
-        for x in range(0, x_steps):
-            for y in range(0, y_steps):
-                block = image[y * block_size : (y + 1) * block_size, x * block_size : (x + 1) * block_size]
-                blocks.append(block)
-
-        return blocks
-
-    def generate_prediction(
-        self, blocks: List[torch.tensor], adjusted_image: torch.tensor, pl_module: Trainer, block_size: int = 256
-    ) -> torch.tensor:
-
-        # gather into batch
-        blocks_stacked = torch.stack(blocks)
-
-        # predict batch
-        blocks_stacked_pred = torch.sigmoid(pl_module(blocks_stacked.unsqueeze(1)))
-        blocks_stacked_pred = torch.argmax(blocks_stacked_pred, dim=1).detach()  # .cpu().numpy()
-        # print("Stacked batch pred size: ", blocks_stacked_pred.size())
-
-        # predict
-        reconstructed_prediction = torch.zeros_like(adjusted_image)
-
-        y_steps = int(adjusted_image.shape[0] / block_size)
-        x_steps = int(adjusted_image.shape[1] / block_size)
-
-        j = 0
-        for x in range(0, x_steps):
-            for y in range(0, y_steps):
-                reconstructed_prediction[
-                    y * block_size : (y + 1) * block_size, x * block_size : (x + 1) * block_size
-                ] = blocks_stacked_pred[j, ...]
-                j += 1
-
-        return reconstructed_prediction

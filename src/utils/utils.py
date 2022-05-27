@@ -1,3 +1,4 @@
+import json
 import importlib
 import warnings
 import rich.syntax
@@ -8,7 +9,16 @@ from typing import List, Any, Sequence
 from omegaconf import DictConfig, OmegaConf
 
 from pytorch_lightning.utilities import rank_zero_only
-from pytorch_lightning import Callback, LightningModule, Trainer, loggers
+from pytorch_lightning import loggers
+
+
+def read_label_classes_config(path_to_label_classes: str) -> dict:
+    """
+    Read json-config with label-classes located in "data" folder.
+    """
+    with open(path_to_label_classes, "r") as f:
+        label_classes = json.load(f)
+    return label_classes
 
 
 def get_logger(name=__name__) -> logging.Logger:
@@ -70,13 +80,7 @@ def print_config(
         rich.print(tree, file=fp)
 
 
-def finish(
-    config: DictConfig,
-    model: LightningModule,
-    trainer: Trainer,
-    callbacks: List[Callback],
-    logger: List[loggers.LightningLoggerBase],
-) -> None:
+def finish(logger: List[loggers.LightningLoggerBase]) -> None:
     """Makes sure everything closed properly."""
 
     # without this sweeps with wandb logger might crash!

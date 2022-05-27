@@ -69,14 +69,7 @@ def train(cfg: DictConfig) -> None:
 
     # Make sure everything closed properly
     log.info("Finalizing!")
-    utils.finish(
-        config=cfg,
-        model=model,
-        datamodule=datamodule,
-        trainer=trainer,
-        callbacks=callbacks,
-        logger=logger,
-    )
+    utils.finish(logger=logger)
 
     # Print path to best checkpoint
     try:

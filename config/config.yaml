@@ -14,7 +14,7 @@ defaults:
   - override hydra/job_logging: colorlog
 
 general:
-  name: unet-effnetb0-batch16x224px-6images-0.5DICE-0.5CE  # name of the run, accessed by loggers
+  name: test  # name of the run, accessed by loggers
   seed: 123
   work_dir: ${hydra:runtime.cwd}
 
@@ -27,6 +27,3 @@ ignore_warnings: False
 # check performance on test set, using the best model achieved during training
 # lightning chooses best model based on metric specified in checkpoint callback
 test_after_training: False
-
-# for k-fold cross validation (used with train_cross_val.py)
-n_folds: 6

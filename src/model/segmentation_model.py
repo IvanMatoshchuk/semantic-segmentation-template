@@ -1,14 +1,29 @@
 import torch
 from torch import Tensor
+from torchmetrics import Accuracy
 import pytorch_lightning as pl
 
 import hydra
 from omegaconf import DictConfig
 from segmentation_models_pytorch.losses import DiceLoss
-from monai.inferers import SlidingWindowInferer
 
 
 class HoneyBeeModel(pl.LightningModule):
+    """
+    Pytorch-Lightning module for handling training.
+    Due to functionality of hydra, passing 2 configs: 1 for initiating model and 1 for loss, optimizer and scheduler.
+
+    For evaluating validation and testing the Dice Loss and the weighted-Accuracy are used by default.
+    These two functions require input about number of classes, which is taken from 'model_cfg'.
+
+    Parameters
+    ----------
+        model_cfg: DictConfig
+            hydar config for initiating model
+        cfg: DictConfig
+            main hydra config with all 'sub-configs'. Used for initiating loss, optimizer and scheduler.
+    """
+
     def __init__(self, model_cfg: DictConfig, cfg: DictConfig):
         super().__init__()
 
@@ -20,31 +35,23 @@ class HoneyBeeModel(pl.LightningModule):
         self.model = hydra.utils.instantiate(model_cfg)
 
         self.criterion = hydra.utils.instantiate(cfg.loss)
-        self.dice_loss = DiceLoss(mode="multiclass", classes=[0, 1, 2, 3, 4, 5, 6, 7, 8], from_logits=True)
 
-        self.inferer = SlidingWindowInferer(
-            roi_size=(416, 416), overlap=0, sw_batch_size=16, mode="gaussian", sigma_scale=0.125
-        )
-
-        # print("\n **** Criterion: ", self.criterion, "\n ****")
+        self.dice_loss = DiceLoss(mode="multiclass", classes=list(range(model_cfg.classes)), from_logits=True)
+        self.accuracy = Accuracy(num_classes=model_cfg.classes, average="weighted")
 
     def forward(self, images: Tensor) -> Tensor:
-        # print("\n **** Images size: ", images.size(), "\n ****")
         return self.model(images)
 
     def training_step(self, batch, batch_idx):
         images, masks = batch
-        # print("\n **** Images train size: ", images.size(), "\n ****")
 
         pred_masks = self.model(images)
-        # pred_masks = self.inferer(images, self.model)
 
         loss = self.criterion(pred_masks, masks.long().to(self.device))
         self.log("train/loss", loss)
 
-        accuracy = self.get_accuracy(pred_masks, masks)
-        self.log("train/accuracy", accuracy)
-        # print("\n Train Accuracy: ", accuracy, "\n")
+        accuracy = self.get_balanced_accuracy(pred_masks, masks)
+        self.log("train/balanced_accuracy", accuracy)
 
         return {"loss": loss, "preds": pred_masks.detach(), "targets": masks.detach()}
 
@@ -52,13 +59,12 @@ class HoneyBeeModel(pl.LightningModule):
         images, masks = batch
 
         pred_masks = self.model(images)
-        # pred_masks = self.inferer(images, self.model)
 
         dice_loss_value = self.dice_loss(pred_masks, masks.long().to(self.device))
         self.log("val/loss", dice_loss_value)
 
-        accuracy = self.get_accuracy(pred_masks, masks)
-        self.log("val/accuracy", accuracy)
+        accuracy = self.get_balanced_accuracy(pred_masks, masks)
+        self.log("val/balanced_accuracy", accuracy)
 
         return {"loss": dice_loss_value, "preds": pred_masks.detach(), "targets": masks.detach()}
 
@@ -66,13 +72,12 @@ class HoneyBeeModel(pl.LightningModule):
         images, masks = batch
 
         pred_masks = self.model(images)
-        # pred_masks = self.inferer(images, self.model)
 
         dice_loss_value = self.dice_loss(pred_masks, masks.long().to(self.device))
         self.log("test/loss", dice_loss_value)
 
-        accuracy = self.get_accuracy(pred_masks, masks)
-        self.log("test/accuracy", accuracy)
+        accuracy = self.get_balanced_accuracy(pred_masks, masks)
+        self.log("test/balanced_accuracy", accuracy)
 
         return {"loss": dice_loss_value, "preds": pred_masks.detach(), "targets": masks.detach()}
 
@@ -88,9 +93,10 @@ class HoneyBeeModel(pl.LightningModule):
         else:
             return [optimizer]
 
-    def get_accuracy(self, pred: Tensor, target: Tensor) -> float:
+    def get_balanced_accuracy(self, pred: Tensor, target: Tensor) -> float:
 
-        pred = torch.argmax(pred, dim=1).detach()  # .cpu()
-        accuracy = torch.mean((pred == target).float())
+        pred = torch.argmax(pred, dim=1).detach()
+        # accuracy = torch.mean((pred == target).float())
+        accuracy = self.accuracy(pred, target)
 
         return accuracy

@@ -1,3 +1,4 @@
 _target_: src.losses.losses.GenDiceLoss
 
 to_onehot_y: False
+n_classes: 9

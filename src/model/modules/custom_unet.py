@@ -1,23 +1,22 @@
 import torch
 import torch.nn as nn
+from torch import Tensor
 from typing import List
 
 
 class Unet(nn.Module):
     def __init__(
-        self, channels: List[int] = [1, 64, 128, 256, 512, 1024], num_classes: int = 1, encoder_name: str = "default"
+        self, channels: List[int] = [1, 64, 128, 256, 512, 1024], classes: int = 1, encoder_name: str = "default"
     ):
         super().__init__()
 
         self.encoder = Encoder(channels)
         self.decoder = Decoder(channels)
 
-        self.head = nn.Conv2d(channels[1], out_channels=num_classes, kernel_size=1)
+        self.head = nn.Conv2d(channels[1], out_channels=classes, kernel_size=1)
 
-    def forward(self, x: torch.tensor) -> torch.tensor:
+    def forward(self, x: Tensor) -> Tensor:
         encoder_outputs = self.encoder(x)
-
-        # encoder_outputs = [i.cuda(1) for i in encoder_outputs]
 
         x = encoder_outputs[-1]
 
@@ -52,7 +51,7 @@ class Encoder(nn.Module):
         )
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
 
-    def forward(self, x: torch.tensor) -> List[torch.tensor]:
+    def forward(self, x: Tensor) -> List[Tensor]:
 
         intermediate_outputs = []
 
@@ -74,15 +73,11 @@ class Decoder(nn.Module):
 
         self.blocks = nn.ModuleList([Block(channels[-i - 1], channels[-i - 2]) for i in range(len(channels) - 1)])
 
-    def forward(self, x: torch.tensor, encoder_outpus: List[torch.tensor]):
+    def forward(self, x: Tensor, encoder_outpus: List[Tensor]):
 
         for encoder_intermediate_output, upconv, block in zip(encoder_outpus, self.upconvs, self.blocks):
 
-            # print("Input: ", x.size())
-            # print("Encoder counterpart: ", encoder_intermediate_output.size())
-
             x = upconv(x)
-            # print("Input upconv: ", x.size())
             x = torch.cat([encoder_intermediate_output, x], dim=1)
             x = block(x)
 

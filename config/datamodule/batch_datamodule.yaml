@@ -3,20 +3,19 @@ _recursive_: False
 
 dataset_args:
   train:
-    _target_: src.datamodule.datasets.custom_datasets.CustomDatasetBatchNew
+    _target_: src.datamodule.datasets.custom_datasets.CustomDatasetArtificialBatchCrops
     images_path: "data/train/images"
     labels_path: "data/train/labels"
-    img_size: "default"
     crop_size: 224
-    n_crops_in_batch: 16 # used with custom-dataset that generates batches in __getitem__
+    n_crops_in_batch: 16 # generates batches in __getitem__
   val:
     _target_: src.datamodule.datasets.custom_datasets.CustomDataset
     images_path: "data/val/images"
     labels_path: "data/val/labels"
   test:
     _target_: src.datamodule.datasets.custom_datasets.CustomDataset
-    images_path: "data/val/images"
-    labels_path: "data/val/labels"
+    images_path: "data/test/images"
+    labels_path: "data/test/labels"
 
 dataloader_args:
   train:
@@ -25,15 +24,17 @@ dataloader_args:
     pin_memory: True
     num_workers: 8
     drop_last: False
-  test:
-    batch_size: 1
-    shuffle: False
-    pin_memory: False
-    num_workers: 1
   val:
     batch_size: 1
     shuffle: False
     pin_memory: True
     num_workers: 1
     drop_last: False
+  test:
+    batch_size: 1
+    shuffle: False
+    pin_memory: False
+    num_workers: 1
+    drop_last: False
+
 

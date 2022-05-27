@@ -10,13 +10,26 @@ import torch.nn.functional as F
 import omegaconf
 from segmentation_models_pytorch.losses import DiceLoss, FocalLoss
 from monai.losses import GeneralizedDiceLoss
-from generalized_wasserstein_dice_loss.loss import GeneralizedWassersteinDiceLoss
 
 
 class DiceWithCE(nn.Module):
-    def __init__(
-        self, dice_loss: DiceLoss, class_weights: List[float], dice_weight: float, ce_weight: float
-    ):  # , ce_loss: nn.CrossEntropyLoss):
+    """
+    Dice with Cross-Entropy Loss.
+    L = dice_weight * Dice Loss + ce_weight * Cross-Entropy Loss
+
+    Parameters
+    ----------
+        dice_loss: DiceLoss
+            initiated DiceLoss (e. g. from segmentation_models_pytorch.DiceLoss).
+        class_weights: List[float]
+            weights used in Cross-Entropy Loss (per class).
+        dice_weight: float
+            weight of the Dice Loss.
+        ce_weight: float
+            weight of the Cross-Entropy Loss.
+    """
+
+    def __init__(self, dice_loss: DiceLoss, class_weights: List[float], dice_weight: float, ce_weight: float):
 
         super().__init__()
 
@@ -26,7 +39,7 @@ class DiceWithCE(nn.Module):
         self.dice_weight = dice_weight
         self.ce_weight = ce_weight
 
-    def forward(self, pred: Tensor, target: Tensor):
+    def forward(self, pred: Tensor, target: Tensor) -> float:
 
         loss = self.dice_weight * self.criterion_dice(pred, target) + self.ce_weight * self.criterion_ce(pred, target)
 
@@ -34,9 +47,23 @@ class DiceWithCE(nn.Module):
 
 
 class FocalWithCE(nn.Module):
-    def __init__(
-        self, focal_loss: FocalLoss, class_weights: List[float], focal_weight: float, ce_weight: float
-    ):  # , ce_loss: nn.CrossEntropyLoss):
+    """
+    Focal with Cross-Entropy Loss.
+    L = focal_weight * Focal Loss + ce_weight * Cross-Entropy Loss
+
+    Parameters
+    ----------
+        focal_loss: FocalLoss
+            initiated FocalLoss (e. g. from segmentation_models_pytorch.FocalLoss).
+        class_weights: List[float]
+            weights used in Cross-Entropy Loss (per class).
+        focal_weight: float
+            weight of the Focal Loss.
+        ce_weight: float
+            weight of the Cross-Entropy Loss.
+    """
+
+    def __init__(self, focal_loss: FocalLoss, class_weights: List[float], focal_weight: float, ce_weight: float):
 
         super().__init__()
 
@@ -46,7 +73,7 @@ class FocalWithCE(nn.Module):
         self.focal_weight = focal_weight
         self.ce_weight = ce_weight
 
-    def forward(self, pred: Tensor, target: Tensor):
+    def forward(self, pred: Tensor, target: Tensor) -> float:
 
         loss = self.focal_weight * self.criterion_focal(pred, target) + self.ce_weight * self.criterion_ce(
             pred, target
@@ -57,11 +84,23 @@ class FocalWithCE(nn.Module):
 
 class DiceCEGausWeighted(nn.Module):
     """
-    # TODO: Gaus kernel on device!
-    # TODO: init CrossEntropy from config!
-    # TODO: modify gaus kernel creation
+    Dice with Cross-Entropy Loss and possibility for the Gaussian weighting of the input's center.
+    Gaussian weighting is applied on Cross-Entropy Loss.
+    For this, it is necessary to set 'reduciton="none"' for Cross-Entropy Loss.
 
-    Dice + Cross Entropy and possibility for gaussian weighting of the input's center
+    Parameters
+    ----------
+        dice_loss: DiceLoss
+            initiated DiceLoss (e. g. from segmentation_models_pytorch.DiceLoss).
+        class_weights_ce: List[float]
+            weights used in Cross-Entropy Loss (per class).
+        kernel_size: int
+            size of the Gaussian kernel in pixels. Kernel will be equal to kernel_size x kernel_size.
+            Standard deviation of the kernel will be equal to kernel_size // 4.
+        dice_weight: float
+            weight of the Dice Loss.
+        ce_weight: float
+            weight of the Cross-Entropy Loss.
     """
 
     def __init__(
@@ -69,8 +108,8 @@ class DiceCEGausWeighted(nn.Module):
         dice_loss: DiceLoss,
         class_weights_ce: List[float],
         kernel_size: int = 256,
-        ce_weight: float or int = 1,
-        dice_weight: float or int = 1,
+        dice_weight: float = 1.0,
+        ce_weight: float = 1.0,
     ):
 
         super().__init__()
@@ -84,14 +123,10 @@ class DiceCEGausWeighted(nn.Module):
 
         # create gaussian kernel
         gaus_kernel = self.create_gaus_kernel(kernel_size=kernel_size, std=kernel_size // 4)
-        self.gaus_kernel = torch.cuda.FloatTensor(gaus_kernel).unsqueeze(0)  # .repeat(batch_size, 1, 1)
+        self.gaus_kernel = torch.cuda.FloatTensor(gaus_kernel).unsqueeze(0)
 
-        # self.device_changed = False
+    def forward(self, pred: Tensor, target: Tensor) -> float:
 
-    def forward(self, pred: Tensor, target: Tensor):
-        # if not self.device_changed:
-        #     self.gaus_kernel.to(pred.device)
-        #     self.device_changed = True
         loss_ce = self.criterion_ce_no_reduction(pred, target)
         loss_ce = loss_ce * self.gaus_kernel.to(pred.device)
 
@@ -100,7 +135,7 @@ class DiceCEGausWeighted(nn.Module):
 
         return loss
 
-    def create_gaus_kernel(self, kernel_size=20, std=10):
+    def create_gaus_kernel(self, kernel_size=20, std=10) -> np.ndarray:
         """Returns a 2D Gaussian kernel array."""
         gkern1d = signal.gaussian(kernel_size, std=std).reshape(kernel_size, 1)
         gkern2d = np.outer(gkern1d, gkern1d)
@@ -108,49 +143,33 @@ class DiceCEGausWeighted(nn.Module):
 
 
 class DiceLogCosh(nn.Module):
+    """
+    log-cosh dice loss function reproduced from https://arxiv.org/pdf/2006.14822.pdf
+    """
+
     def __init__(self, dice_loss: DiceLoss):
         super().__init__()
         self.dice_loss = dice_loss
 
-    def forward(self, pred: Tensor, target: Tensor):
+    def forward(self, pred: Tensor, target: Tensor) -> float:
         return torch.log(torch.cosh(self.dice_loss(pred, target)))
 
 
 class GenDiceLoss(nn.Module):
-    def __init__(self, to_onehot_y=False):
+    """
+    Generalized Dice Loss. Implementation from 'monai' library.
+    Generalized Dice loss controls the contribution that each class makes to the loss by
+    weighting classes by the inverse size of the expected region.
+    """
+
+    def __init__(self, n_classes: int, to_onehot_y=False):
         super().__init__()
         self.loss = GeneralizedDiceLoss(to_onehot_y=to_onehot_y)
+        self.n_classes = n_classes
 
     def forward(self, pred: Tensor, target: Tensor):
-        target = F.one_hot(torch.tensor(target).long(), 9).permute(0, 3, 1, 2)
+        target = F.one_hot(torch.tensor(target).long(), self.n_classes).permute(0, 3, 1, 2)
         return self.loss(pred, target)
-
-
-class WassersteinDice(nn.Module):
-    def __init__(self, weighting_mode: str = "GDL", reduction: str = "mean"):
-        super().__init__()
-
-        dist_mat = np.array(
-            [
-                [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-                [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [1.0, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0],
-                [1.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0],
-                [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [1.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            ]
-        )
-
-        self.wass_loss = GeneralizedWassersteinDiceLoss(
-            dist_matrix=dist_mat, weighting_mode=weighting_mode, reduction=reduction
-        )
-
-    def forward(self, pred: Tensor, target: Tensor):
-
-        return self.wass_loss(pred, target)
 
 
 class MyFocalLoss(nn.Module):
@@ -241,6 +260,8 @@ class MyFocalLoss(nn.Module):
 
 def dice_loss(true, logits, eps=1e-7):
     """
+    Custom Dice Loss
+
     https://github.com/kevinzakka/pytorch-goodies/blob/master/losses.py#L54
 
     Computes the Sørensen–Dice loss.

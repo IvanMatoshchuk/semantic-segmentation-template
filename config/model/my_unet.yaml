@@ -1,17 +1,10 @@
 _target_: src.model.segmentation_model.HoneyBeeModel
 _recursive_: False
 
-# model_cfg:
-#   _target_: src.model.modules.custom_unet.Unet
-#   encoder_name: "default"
-  
-#   channels: [1, 64, 128, 256, 512, 1024]
-#   num_classes: 9
-
 model_cfg:
-  _target_: src.model.modules.unet_model.UNet
-  
-  n_channels: 1
-  n_classes: 9
+  _target_: src.model.modules.custom_unet.Unet
+  channels: [1, 64, 128, 256, 512, 1024]
+  classes: 9
   encoder_name: "default"
-  bilinear: False
+
+

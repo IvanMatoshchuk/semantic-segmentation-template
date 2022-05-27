@@ -24,6 +24,8 @@ bash bash/setup_conda.sh
 pip install -r requirements.txt
 ```
 
+Add your label-classes into data/label_classes.json
+
 Train model with default configuration
 ```yaml
 # default
@@ -68,11 +70,7 @@ This template was inspired by:
 
 </details>
  
-
-<br>
-<br>
-<br>
-
+ <br>
 
 ## License
 This project is licensed under the MIT License.

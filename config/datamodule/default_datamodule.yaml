@@ -6,17 +6,17 @@ dataset_args:
     _target_: src.datamodule.datasets.custom_datasets.CustomDataset
     images_path: "data/train/images"
     labels_path: "data/train/labels"
-    img_size: 1024
+    phase: train
   val:
     _target_: src.datamodule.datasets.custom_datasets.CustomDataset
     images_path: "data/val/images"
     labels_path: "data/val/labels"
-    img_size: 512
+    phase: val
   test:
     _target_: src.datamodule.datasets.custom_datasets.CustomTestDataset
     images_path: "data/test/images"
     labels_path: "data/test/labels"
-    img_size: 512
+    phase: test
 
 dataloader_args:
   train:

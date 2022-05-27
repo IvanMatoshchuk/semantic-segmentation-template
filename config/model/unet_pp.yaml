@@ -6,8 +6,7 @@ model_cfg:
 
   encoder_name: efficientnet-b0 # timm-mobilenetv3_small_100 
   encoder_weights: imagenet
-  #encoder_depth: 5
+  # encoder_depth: 5
   classes: 9
   in_channels: 1
-  #activation: softmax 
-  # decoder_channels: [64, 32, 16] #  depth 3
+  # activation: softmax 
