@@ -5,7 +5,7 @@ import hydra
 from omegaconf import DictConfig
 
 
-class HoneyBeesDataModule(LightningDataModule):
+class SegmentationDataModule(LightningDataModule):
     def __init__(self, dataset_args: DictConfig, dataloader_args: DictConfig):
         super().__init__()
 
@@ -22,7 +22,7 @@ class HoneyBeesDataModule(LightningDataModule):
 
     def test_dataset(self) -> Dataset:
 
-        return hydra.utils.instantiate(self.dataset_args.test, phase="val")
+        return hydra.utils.instantiate(self.dataset_args.test, phase="test")
 
     def train_dataloader(self) -> DataLoader:
         train_dataset = self.train_dataset()

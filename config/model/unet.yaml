@@ -1,4 +1,4 @@
-_target_: src.model.segmentation_model.HoneyBeeModel
+_target_: src.model.segmentation_model.SegmentationModel
 _recursive_: False
 
 model_cfg:

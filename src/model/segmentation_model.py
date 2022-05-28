@@ -8,7 +8,7 @@ from omegaconf import DictConfig
 from segmentation_models_pytorch.losses import DiceLoss
 
 
-class HoneyBeeModel(pl.LightningModule):
+class SegmentationModel(pl.LightningModule):
     """
     Pytorch-Lightning module for handling training.
     Due to functionality of hydra, passing 2 configs: 1 for initiating model and 1 for loss, optimizer and scheduler.

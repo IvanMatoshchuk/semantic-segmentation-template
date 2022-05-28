@@ -1,4 +1,4 @@
-_target_: src.datamodule.honeybee_datamodule.HoneyBeesDataModule
+_target_: src.datamodule.segmentation_datamodule.SegmentationDataModule
 _recursive_: False
 
 dataset_args:
