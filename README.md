@@ -17,11 +17,8 @@ Main frameworks:
 Install dependencies
 ```yaml
 # clone project
-git clone https://github.com/YourGithubName/your-repo-name
-cd your-repo-name
-
-# [OPTIONAL] create conda environment
-bash bash/setup_conda.sh
+git clone https://github.com/IvanMatoshchuk/semantic-segmentation-template
+cd semantic-segmentation-template
 
 # install requirements
 pip install -r requirements.txt
