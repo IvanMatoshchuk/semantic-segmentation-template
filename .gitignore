@@ -3,6 +3,7 @@ lightning_logs/*
 inference_output/*
 inference_data/*
 outputs/*
+wandb/*
 
 # images
 *.jpg

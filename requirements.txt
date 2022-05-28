@@ -1,0 +1,16 @@
+albumentations~=1.1.0
+hydra-core~=1.2.0
+matplotlib~=3.4.3
+monai~=0.8.0
+numpy~=1.21.2
+omegaconf~=2.1.1
+opencv_python~=4.5.3.56
+pandas~=1.4.2
+pytorch_lightning~=1.4.9
+rich~=12.4.4
+scikit_learn~=1.1.1
+scipy~=1.7.1
+seaborn~=0.11.2
+segmentation_models_pytorch~=0.2.0
+torch~=1.9.1
+torchmetrics~=0.5.1

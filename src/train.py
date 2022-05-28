@@ -15,11 +15,10 @@ def train(cfg: DictConfig) -> None:
     Contains training pipeline.
     Instantiates all PyTorch Lightning objects from config.
 
-    Args:
-        config (DictConfig): Configuration composed by Hydra.
-
-    Returns:
-        None
+    Parameters
+    ----------
+        config: DictConfig
+            DictConfig composed by Hydra.
     """
     # Set seed for random number generators in pytorch, numpy and python.random
     if cfg.general.get("seed"):
