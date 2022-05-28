@@ -4,7 +4,7 @@ _recursive_: False
 model_cfg:
   _target_: segmentation_models_pytorch.Unet
 
-  encoder_name: timm-mobilenetv3_small_100  # efficientnet-b0 timm-mobilenetv3_small_100 
+  encoder_name: efficientnet-b0  # efficientnet-b0 timm-mobilenetv3_small_100 
   encoder_weights: imagenet
   encoder_depth: 5
   classes: 9

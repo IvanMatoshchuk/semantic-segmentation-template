@@ -24,9 +24,10 @@ bash bash/setup_conda.sh
 pip install -r requirements.txt
 ```
 
-Add your label-classes into data/label_classes.json
+Add your label-classes into `data/label_classes.json`.\
+Specify number of classes in the selected `model` config.
 
-Train model with default configuration
+Train model with default configuration:
 ```yaml
 # default
 python run.py
@@ -36,19 +37,89 @@ python run.py trainer.gpus=0
 
 # train on GPU
 python run.py trainer.gpus=1
+
+# train on multiple GPUs
+python run.py trainer.gpus=[0,1,2,3]
 ```
 
-Train model with chosen experiment configuration from [configs/experiment/](configs/experiment/)
+You can override any parameter from the command line:
 ```yaml
-python run.py experiment=experiment_name
+python run.py trainer.max_epochs=20 datamodule.dataset_args.train.crop_size=416 model=unet
 ```
 
-You can override any parameter from command line like this
+You can run hyperparameter search from the command line:
 ```yaml
-python run.py trainer.max_epochs=20 datamodule.batch_size=64
+# this will run 6 experiments one after the other,
+# each with different combination of batch_size and learning rate
+python run.py -m datamodule.dataloader_args.train.batch_size=32,64,128 optimizer.lr=0.001,0.0005
 ```
 
+### How it works
+By design, every run is initialized by [run.py](run.py) file. All PyTorch Lightning modules are dynamically instantiated from module paths specified in config. Example model config (unet.yaml):
+```yaml
+_target_: src.model.segmentation_model.HoneyBeeModel
+_recursive_: False
 
+model_cfg:
+  _target_: segmentation_models_pytorch.Unet
+
+  encoder_name: efficientnet-b0  # efficientnet-b0 timm-mobilenetv3_small_100 
+  encoder_weights: imagenet
+  encoder_depth: 5
+  classes: 9
+  in_channels: 1
+```
+Using this config we can instantiate the object with the following line:
+```python
+model = hydra.utils.instantiate(config.model)
+```
+This allows you to easily iterate over new models!<br>
+Every time you create a new one, just specify its module path and parameters in appriopriate config file. <br>
+The whole pipeline managing the instantiation logic is placed in [src/train.py](src/train.py).
+
+<br>
+
+## Main Project Configuration
+Location: [configs/config.yaml](configs/config.yaml)<br>
+Main project config contains default training configuration.<br>
+It determines how config is composed when simply executing command `python run.py`.<br>
+It also specifies everything that shouldn't be managed by experiment configurations.
+<details>
+<summary><b>Show main project configuration</b></summary>
+
+```yaml
+# specify here default training configuration
+defaults:
+  - _self_
+  - logger: wandb
+  - callbacks: wandb
+  - datamodule: batch_datamodule
+  - model: unet
+  - trainer: default_trainer
+  - optimizer: adam
+  - scheduler: cosinewarm
+  - loss: dice_with_ce
+
+  # enable color logging
+  - override hydra/hydra_logging: colorlog
+  - override hydra/job_logging: colorlog
+ 
+general:
+  name: test  # name of the run, accessed by loggers
+  seed: 123
+  work_dir: ${hydra:runtime.cwd}
+
+# print config at the start
+print_config: True
+
+# disable python warnings if they annoy you
+ignore_warnings: False
+
+# check performance on test set, using the best model achieved during training
+# lightning chooses best model based on metric specified in checkpoint callback
+test_after_training: False
+```
+</details>
 
 ## Other Repositories
 
@@ -56,9 +127,9 @@ python run.py trainer.max_epochs=20 datamodule.batch_size=64
 <summary><b>Inspirations</b></summary>
 
 This template was inspired by:
-[PyTorchLightning/deep-learninig-project-template](https://github.com/PyTorchLightning/deep-learning-project-template),
-[Erlemar/pytorch_tempest](https://github.com/Erlemar/pytorch_tempest),
-[ashleve/lightning-hydra-template](https://github.com/ashleve/lightning-hydra-template)
+- [PyTorchLightning/deep-learninig-project-template](https://github.com/PyTorchLightning/deep-learning-project-template)
+- [Erlemar/pytorch_tempest](https://github.com/Erlemar/pytorch_tempest)
+- [ashleve/lightning-hydra-template](https://github.com/ashleve/lightning-hydra-template)
 
 </details>
 
