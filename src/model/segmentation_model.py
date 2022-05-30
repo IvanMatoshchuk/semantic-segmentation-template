@@ -2,6 +2,7 @@ import torch
 from torch import Tensor
 from torchmetrics import Accuracy
 import pytorch_lightning as pl
+from sklearn.metrics import balanced_accuracy_score
 
 import hydra
 from omegaconf import DictConfig
@@ -50,7 +51,7 @@ class SegmentationModel(pl.LightningModule):
         loss = self.criterion(pred_masks, masks.long().to(self.device))
         self.log("train/loss", loss)
 
-        accuracy = self.get_balanced_accuracy(pred_masks, masks)
+        accuracy = self.get_weighted_accuracy(pred_masks, masks)
         self.log("train/balanced_accuracy", accuracy)
 
         return {"loss": loss, "preds": pred_masks.detach(), "targets": masks.detach()}
@@ -63,7 +64,7 @@ class SegmentationModel(pl.LightningModule):
         dice_loss_value = self.dice_loss(pred_masks, masks.long().to(self.device))
         self.log("val/loss", dice_loss_value)
 
-        accuracy = self.get_balanced_accuracy(pred_masks, masks)
+        accuracy = self.get_weighted_accuracy(pred_masks, masks)
         self.log("val/balanced_accuracy", accuracy)
 
         return {"loss": dice_loss_value, "preds": pred_masks.detach(), "targets": masks.detach()}
@@ -76,7 +77,7 @@ class SegmentationModel(pl.LightningModule):
         dice_loss_value = self.dice_loss(pred_masks, masks.long().to(self.device))
         self.log("test/loss", dice_loss_value)
 
-        accuracy = self.get_balanced_accuracy(pred_masks, masks)
+        accuracy = self.get_weighted_accuracy(pred_masks, masks)
         self.log("test/balanced_accuracy", accuracy)
 
         return {"loss": dice_loss_value, "preds": pred_masks.detach(), "targets": masks.detach()}
@@ -93,10 +94,17 @@ class SegmentationModel(pl.LightningModule):
         else:
             return [optimizer]
 
+    def get_weighted_accuracy(self, pred: Tensor, target: Tensor) -> float:
+
+        pred = torch.argmax(pred, dim=1).detach()
+        accuracy = self.accuracy(pred, target)
+
+        return accuracy
+
     def get_balanced_accuracy(self, pred: Tensor, target: Tensor) -> float:
 
         pred = torch.argmax(pred, dim=1).detach()
-        # accuracy = torch.mean((pred == target).float())
-        accuracy = self.accuracy(pred, target)
+
+        accuracy = balanced_accuracy_score(target.detach().cpu().numpy().flatten(), pred.cpu().numpy().flatten())
 
         return accuracy
