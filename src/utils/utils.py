@@ -79,12 +79,12 @@ def print_config(
         rich.print(tree, file=fp)
 
 
-def finish(logger: List[loggers.LightningLoggerBase]) -> None:
+def finish(logger: List[loggers.Logger]) -> None:
     """Makes sure everything closed properly."""
 
     # without this sweeps with wandb logger might crash!
     for lg in logger:
-        if isinstance(lg, loggers.wandb.WandbLogger):
+        if isinstance(lg, loggers.WandbLogger):
             import wandb
 
             wandb.finish()

@@ -3,11 +3,16 @@ import os
 import pytest
 import hydra
 from hydra import compose, initialize
+from hydra.core.global_hydra import GlobalHydra
 
 
 @pytest.mark.parametrize("loss_name", os.listdir("config/loss"))
 def test_losses(loss_name: str) -> None:
     loss_name_full = loss_name.split(".")[0]
-    with initialize(config_path="../config"):
+    GlobalHydra.instance().clear()
+
+    with initialize(config_path="../config", version_base="1.1"):
         cfg = compose(config_name="config", overrides=[f"loss={loss_name_full}"])
         hydra.utils.instantiate(cfg.loss)
+
+    GlobalHydra.instance().clear()

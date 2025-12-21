@@ -10,7 +10,7 @@ import torch
 import wandb
 from monai.inferers import SlidingWindowInferer
 from pytorch_lightning import Callback, Trainer
-from pytorch_lightning.loggers import LoggerCollection, WandbLogger
+from pytorch_lightning.loggers import Logger, WandbLogger
 from pytorch_lightning.utilities import rank_zero_only
 from sklearn import metrics
 from src.utils.utils import read_label_classes_config
@@ -25,7 +25,7 @@ def get_wandb_logger(trainer: Trainer) -> WandbLogger:
     if isinstance(trainer.logger, WandbLogger):
         return trainer.logger
 
-    if isinstance(trainer.logger, LoggerCollection):
+    if isinstance(trainer.logger, list[Logger]):
         for logger in trainer.logger:
             if isinstance(logger, WandbLogger):
                 return logger
@@ -252,7 +252,6 @@ class LogImagePredictions(Callback):
 
     @rank_zero_only
     def on_validation_epoch_end(self, trainer, pl_module):
-
         if self.ready & (trainer.current_epoch % self.log_freq == 0):
             logger = get_wandb_logger(trainer=trainer)
             experiment = logger.experiment

@@ -1,7 +1,7 @@
 from typing import List
 
 import numpy as np
-from scipy import signal
+from scipy.signal import windows
 
 import torch
 from torch import Tensor
@@ -30,7 +30,6 @@ class DiceWithCE(nn.Module):
     """
 
     def __init__(self, dice_loss: DiceLoss, class_weights: List[float], dice_weight: float, ce_weight: float):
-
         super().__init__()
 
         self.criterion_dice = dice_loss
@@ -40,7 +39,6 @@ class DiceWithCE(nn.Module):
         self.ce_weight = ce_weight
 
     def forward(self, pred: Tensor, target: Tensor) -> float:
-
         loss = self.dice_weight * self.criterion_dice(pred, target) + self.ce_weight * self.criterion_ce(pred, target)
 
         return loss
@@ -64,7 +62,6 @@ class FocalWithCE(nn.Module):
     """
 
     def __init__(self, focal_loss: FocalLoss, class_weights: List[float], focal_weight: float, ce_weight: float):
-
         super().__init__()
 
         self.criterion_focal = focal_loss
@@ -74,7 +71,6 @@ class FocalWithCE(nn.Module):
         self.ce_weight = ce_weight
 
     def forward(self, pred: Tensor, target: Tensor) -> float:
-
         loss = self.focal_weight * self.criterion_focal(pred, target) + self.ce_weight * self.criterion_ce(
             pred, target
         )
@@ -111,7 +107,6 @@ class DiceCEGausWeighted(nn.Module):
         dice_weight: float = 1.0,
         ce_weight: float = 1.0,
     ):
-
         super().__init__()
         self.criterion_dice = dice_loss
 
@@ -123,10 +118,9 @@ class DiceCEGausWeighted(nn.Module):
 
         # create gaussian kernel
         gaus_kernel = self.create_gaus_kernel(kernel_size=kernel_size, std=kernel_size // 4)
-        self.gaus_kernel = torch.cuda.FloatTensor(gaus_kernel).unsqueeze(0)
+        self.gaus_kernel = torch.FloatTensor(gaus_kernel).unsqueeze(0)
 
     def forward(self, pred: Tensor, target: Tensor) -> float:
-
         loss_ce = self.criterion_ce_no_reduction(pred, target)
         loss_ce = loss_ce * self.gaus_kernel.to(pred.device)
 
@@ -137,7 +131,7 @@ class DiceCEGausWeighted(nn.Module):
 
     def create_gaus_kernel(self, kernel_size=20, std=10) -> np.ndarray:
         """Returns a 2D Gaussian kernel array."""
-        gkern1d = signal.gaussian(kernel_size, std=std).reshape(kernel_size, 1)
+        gkern1d = windows.gaussian(kernel_size, std=std).reshape(kernel_size, 1)
         gkern2d = np.outer(gkern1d, gkern1d)
         return gkern2d
 

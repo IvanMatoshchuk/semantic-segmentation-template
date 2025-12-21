@@ -14,44 +14,49 @@ Main frameworks:
 * [pytorch-lightning](https://github.com/PyTorchLightning/pytorch-lightning)
 
 ## How to run
+
+Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
 Install dependencies
-```yaml
+```bash
 # clone project
 git clone https://github.com/IvanMatoshchuk/semantic-segmentation-template
 cd semantic-segmentation-template
 
-# install requirements
-pip install -r requirements.txt
+uv sync
 ```
 
 Add your label-classes into `data/label_classes.json`.\
 Specify number of classes in the selected `model` config.
 
 Train model with default configuration:
-```yaml
+```bash
 # default
-python run.py
+uv run run.py
 
 # train on CPU
-python run.py trainer.gpus=0
+uv run run.py trainer.gpus=0
 
 # train on GPU
-python run.py trainer.gpus=1
+uv run run.py trainer.gpus=1
 
 # train on multiple GPUs
-python run.py trainer.gpus=[0,1,2,3]
+uv run run.py trainer.gpus=[0,1,2,3]
 ```
 
 You can override any parameter from the command line:
-```yaml
-python run.py trainer.max_epochs=20 datamodule.dataset_args.train.crop_size=416 model=unet
+```bash
+uv run run.py trainer.max_epochs=20 datamodule.dataset_args.train.crop_size=416 model=unet
 ```
 
 You can run hyperparameter search from the command line:
-```yaml
+```bash
 # this will run 6 experiments one after the other,
 # each with different combination of batch_size and learning rate
-python run.py -m datamodule.dataloader_args.train.batch_size=32,64,128 optimizer.lr=0.001,0.0005
+uv run run.py -m datamodule.dataloader_args.train.batch_size=32,64,128 optimizer.lr=0.001,0.0005
 ```
 
 ### How it works

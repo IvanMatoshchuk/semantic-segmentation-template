@@ -1,9 +1,9 @@
 # https://wandb.ai
 
 wandb:
-  _target_: pytorch_lightning.loggers.wandb.WandbLogger
-  project: "honeybee_cells_segmentation"
-  entity: "ivan-thesis"
+  _target_: pytorch_lightning.loggers.WandbLogger
+  project: "semantic-segmentation-project"
+  entity: "base-run"
   name: ${general.name}
   save_dir: "."
   offline: False # set True to store all logs only locally

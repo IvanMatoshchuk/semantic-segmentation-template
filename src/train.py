@@ -3,7 +3,7 @@ from typing import List
 import hydra
 from omegaconf import DictConfig
 from pytorch_lightning import Callback, LightningDataModule, LightningModule, Trainer, seed_everything
-from pytorch_lightning.loggers import LightningLoggerBase
+from pytorch_lightning.loggers import Logger
 
 from src.utils import utils
 
@@ -26,7 +26,7 @@ def train(cfg: DictConfig) -> None:
         seed_everything(cfg.general.seed, workers=True)
 
     # Init lightning loggers
-    logger: List[LightningLoggerBase] = []
+    logger: List[Logger] = []
     if "logger" in cfg:
         for _, lg_conf in cfg.logger.items():
             if "_target_" in lg_conf:
