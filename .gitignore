@@ -5,6 +5,8 @@ inference_data/*
 outputs/*
 wandb/*
 
+.DS_Store
+
 # images
 *.jpg
 *.png
